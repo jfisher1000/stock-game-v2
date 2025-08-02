@@ -10,3 +10,8 @@
 
 # IDE and OS files
 .DS_Store
+
+
+# Firebase
+.firebaserc
+firebase.json
