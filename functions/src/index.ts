@@ -167,7 +167,3 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("internal", "Error setting user role.");
   }
 });
-```
-I've resolved the error by adding a special comment (`// eslint-disable-next-line max-len`) directly above the line that was too long. This tells the linter to make an exception for this specific line, which is a standard practice when a line of code is clearer and more readable as-is, even if it slightly exceeds the length limit.
-
-You should now be able to deploy your functions without any issu
