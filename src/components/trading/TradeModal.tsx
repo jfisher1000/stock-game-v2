@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2 } from "lucide-react"; // For loading spinner
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner"; // Import the toast function
 
 // --- Type Definitions ---
 
@@ -61,8 +62,7 @@ export function TradeModal({
   const [quantity, setQuantity] = useState("");
   const [activeTab, setActiveTab] = useState("buy"); // 'buy' or 'sell'
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
+  
   // Creates a callable reference to our Firebase Cloud Function.
   const placeOrder = httpsCallable<PlaceOrderData, PlaceOrderResult>(
     functions,
@@ -71,13 +71,12 @@ export function TradeModal({
 
   const handleTrade = async () => {
     setIsLoading(true);
-    setError(null);
-
+    
     const numQuantity = parseInt(quantity, 10);
 
     // Validate the quantity input.
     if (isNaN(numQuantity) || numQuantity <= 0) {
-      setError("Please enter a valid, positive quantity.");
+      toast.error("Please enter a valid, positive quantity.");
       setIsLoading(false);
       return;
     }
@@ -94,16 +93,16 @@ export function TradeModal({
         assetType,
       });
 
-      // On success, close the modal and reset the state.
+      // On success, show a success toast, close the modal, and reset state.
       if (result.data.success) {
-        console.log("Success!", result.data.message);
+        toast.success(result.data.message || "Order placed successfully!");
         setIsOpen(false);
         setQuantity("");
       }
     } catch (err: any) {
-      // On failure, display the error message from the function.
+      // On failure, display the error message from the function in a toast.
       console.error("Error placing order:", err);
-      setError(err.message || "An unknown error occurred.");
+      toast.error(err.message || "An unknown error occurred.");
     } finally {
       setIsLoading(false);
     }
@@ -161,8 +160,6 @@ export function TradeModal({
             {estimatedTotal.toFixed(2)}
           </div>
         </div>
-
-        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
         <DialogFooter>
           <Button
