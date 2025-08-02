@@ -8,27 +8,30 @@ import AppLayout from './components/layout/AppLayout';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 function App() {
   const { setUser } = useAuthStore();
 
   useEffect(() => {
-    // This listener will run once when the app loads and update the user state
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
     });
-
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [setUser]);
 
-
   return (
     <Routes>
+      {/* Public Routes */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignUpPage />} />
+
+      {/* Protected Routes */}
       <Route element={<AppLayout />}>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignUpPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<DashboardPage />} />
+          {/* Add other protected routes here */}
+        </Route>
       </Route>
     </Routes>
   );
