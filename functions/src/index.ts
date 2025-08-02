@@ -146,7 +146,6 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
   // 2. Input Validation: Check for required data.
   const email = data.email;
   if (typeof email !== "string" || email.length === 0) {
-    // eslint-disable-next-line max-len
     throw new functions.https.HttpsError(
       "invalid-argument",
       "The function must be called with a valid 'email' argument.",
@@ -164,6 +163,9 @@ export const setUserRole = functions.https.onCall(async (data, context) => {
     };
   } catch (error) {
     functions.logger.error("Error setting user role:", error);
-    throw new functions.https.HttpsError("internal", "Error setting user role.");
+    throw new functions.https.HttpsError(
+      "internal",
+      "Error setting user role.",
+    );
   }
 });
