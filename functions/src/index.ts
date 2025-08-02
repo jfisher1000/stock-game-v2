@@ -51,12 +51,17 @@ export const placeOrder = onCall((request) => {
  * that are actively being held in competitions.
  */
 export const updateMarketData = onSchedule("every 1 minutes", async (event: ScheduledEvent) => {
-  logger.log("Scheduled function 'updateMarketData' is running.", { timestamp: event.timestamp });
+  // The 'scheduleTime' property contains the timestamp for the event.
+  logger.log("Scheduled function 'updateMarketData' is running.", { scheduleTime: event.scheduleTime });
+  
   // TODO: Implement market data fetching logic
   // - Get a unique list of all symbols currently held across all active competitions.
   // - Fetch the latest prices for these symbols from a financial data API.
   // - Update the /market_data/{symbol} documents in Firestore with the new prices.
-  return null;
+
+  // Scheduled functions should return a Promise that resolves to void.
+  // Simply not having a return statement at the end of an async function does this.
+  return;
 });
 
 
