@@ -21,17 +21,14 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
 
-// This block connects to the local Firebase emulators when
-// running in development mode. This is the code we've just added.
-// `import.meta.env.DEV` is a variable provided by Vite.
 if (import.meta.env.DEV) {
   console.log("✅ Development mode: Connecting to local Firebase emulators.");
 
   // Point to the Auth emulator
   connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
 
-  // Point to the Firestore emulator
-  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+  // Point to the Firestore emulator on the new port
+  connectFirestoreEmulator(db, "127.0.0.1", 8081);
 
   // Point to the Functions emulator
   connectFunctionsEmulator(functions, "127.0.0.1", 5001);
