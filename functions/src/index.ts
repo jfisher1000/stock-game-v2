@@ -1,170 +1,76 @@
-import {initializeApp} from "firebase-admin/app";
-import {getFirestore} from "firebase-admin/firestore";
-import {onCall, HttpsError} from "firebase-functions/v2/https";
+import { onCall, onRequest } from "firebase-functions/v2/https";
+import { onSchedule } from "firebase-functions/v2/pubsub";
+import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 
-// Initialize the Firebase Admin SDK
-initializeApp();
-const db = getFirestore();
+// Initialize Firebase Admin SDK
+admin.initializeApp();
 
 /**
- * Interface for the data expected from the client when calling this function.
+ * A callable function to place a trade order for a user in a competition.
+ * This function is the core of the trading engine and must be secure and transactional.
  */
-interface PlaceOrderData {
-  competitionId: string;
-  symbol: string;
-  quantity: number; // Positive for buy, negative for sell
-  assetType: "stock" | "crypto"; // To check market hours
-}
-
-/**
- * A callable function to place a stock or crypto trade within a competition.
- * This function is the authoritative source for all trading logic.
- */
-export const placeOrder = onCall<PlaceOrderData>(async (request) => {
-  // 1. === AUTHENTICATION & VALIDATION ===
-  // Ensure the user is authenticated.
+export const placeOrder = onCall((request) => {
+  // Ensure the user is authenticated before proceeding.
   if (!request.auth) {
-    logger.error("User is not authenticated.", {structuredData: true});
-    throw new HttpsError(
-        "unauthenticated",
-        "You must be logged in to place an order.",
+    throw new onCall.HttpsError(
+      "unauthenticated",
+      "The function must be called while authenticated.",
     );
   }
 
-  const {competitionId, symbol, quantity, assetType} = request.data;
+  // Log the raw request data for debugging.
+  logger.info("Received placeOrder request:", { data: request.data, auth: request.auth });
+
+  // TODO: Implement the full trading logic as per the PRD
+  // - Validate competition status (active, not expired)
+  // - Validate market hours for the given asset type (e.g., stocks vs. crypto)
+  // - Perform a Firestore transaction to ensure atomic operations:
+  //   1. Read the asset's current price from /market_data/{symbol}.
+  //   2. Read the user's participant data to get their cash_balance.
+  //   3. Verify the user has sufficient funds (for a buy) or shares (for a sell).
+  //   4. Debit/credit the user's cash_balance.
+  //   5. Update, create, or delete the asset document in the user's /holdings subcollection.
+  //   6. Create a new document in the /transactions subcollection to log the trade.
+
+  const { symbol, quantity, orderType } = request.data;
   const userId = request.auth.uid;
 
-  // Basic data validation.
-  if (!competitionId || !symbol || !quantity || !assetType) {
-    throw new HttpsError(
-        "invalid-argument",
-        "Missing required fields for placing an order.",
-    );
-  }
+  // Placeholder response for now.
+  return {
+    success: true,
+    message: `Order placed for ${quantity} of ${symbol} for user ${userId}.`,
+    details: {
+      orderType,
+    },
+  };
+});
 
-  // 2. === MARKET HOURS VALIDATION ===
-  // As per the PRD, stocks can only be traded during market hours.
-  if (assetType === "stock") {
-    const now = new Date();
-    // Note: This uses server time (UTC). You may need to adjust for your
-    // target market's time zone (e.g., ET for NYSE).
-    const hours = now.getUTCHours();
-    const day = now.getUTCDay(); // Sunday = 0, Saturday = 6
+/**
+ * A scheduled function that runs every minute to update market data for assets
+ * that are actively being held in competitions.
+ */
+export const updateMarketData = onSchedule("every 1 minutes", async (event) => {
+  logger.log("Scheduled function 'updateMarketData' is running.");
+  // TODO: Implement market data fetching logic
+  // - Get a unique list of all symbols currently held across all active competitions.
+  // - Fetch the latest prices for these symbols from a financial data API.
+  // - Update the /market_data/{symbol} documents in Firestore with the new prices.
+  return null;
+});
 
-    // Example for ET (UTC-4 during DST): 9:30 AM ET is 13:30 UTC. 4 PM ET is 20:00 UTC.
-    const isMarketOpen =
-      day >= 1 && day <= 5 && hours >= 13.5 && hours < 20;
-    if (!isMarketOpen) {
-      throw new HttpsError(
-          "failed-precondition",
-          "The stock market is currently closed.",
-      );
-    }
-  }
 
-  try {
-    // 3. === FIRESTORE TRANSACTION ===
-    // Use a transaction to ensure the trade is atomic.
-    await db.runTransaction(async (transaction) => {
-      // Define document references within the transaction.
-      const participantRef = db
-          .collection("competitions")
-          .doc(competitionId)
-          .collection("participants")
-          .doc(userId);
-      const holdingRef = participantRef.collection("holdings").doc(symbol);
-      const marketDataRef = db.collection("market_data").doc(symbol);
-
-      // Fetch the required documents.
-      const [participantDoc, holdingDoc, marketDataDoc] =
-        await transaction.getAll(
-            participantRef,
-            holdingRef,
-            marketDataRef,
-        );
-
-      if (!participantDoc.exists) {
-        throw new HttpsError("not-found", "Participant not found.");
-      }
-      if (!marketDataDoc.exists) {
-        throw new HttpsError("not-found", `Market data for ${symbol} not found.`);
-      }
-
-      const cashBalance = participantDoc.data()?.cash_balance ?? 0;
-      const currentPrice = marketDataDoc.data()?.price ?? 0;
-      const totalCost = currentPrice * quantity;
-
-      // --- BUY LOGIC ---
-      if (quantity > 0) {
-        if (cashBalance < totalCost) {
-          throw new HttpsError(
-              "failed-precondition",
-              "Insufficient funds.",
-          );
-        }
-        // Debit cash.
-        transaction.update(participantRef, {
-          cash_balance: cashBalance - totalCost,
-        });
-
-        // Update holdings.
-        if (holdingDoc.exists) {
-          const existingQty = holdingDoc.data()?.quantity ?? 0;
-          transaction.update(holdingRef, {quantity: existingQty + quantity});
-        } else {
-          transaction.set(holdingRef, {quantity: quantity});
-        }
-      }
-      // --- SELL LOGIC ---
-      else { // quantity < 0
-        const sharesToSell = Math.abs(quantity);
-        const existingQty = holdingDoc.data()?.quantity ?? 0;
-
-        if (!holdingDoc.exists || existingQty < sharesToSell) {
-          throw new HttpsError(
-              "failed-precondition",
-              "Insufficient shares to sell.",
-          );
-        }
-        // Credit cash.
-        transaction.update(participantRef, {
-          cash_balance: cashBalance - totalCost, // totalCost is negative
-        });
-
-        // Update holdings.
-        if (existingQty === sharesToSell) {
-          transaction.delete(holdingRef); // Delete if selling all shares
-        } else {
-          transaction.update(holdingRef, {quantity: existingQty - sharesToSell});
-        }
-      }
-
-      // 4. === LOG THE TRANSACTION ===
-      const transactionLogRef = participantRef.collection("transactions").doc();
-      transaction.set(transactionLogRef, {
-        symbol,
-        quantity,
-        price: currentPrice,
-        total: totalCost,
-        timestamp: new Date(),
-        type: quantity > 0 ? "buy" : "sell",
-      });
-    });
-
-    logger.info(`Trade successfully placed for ${userId}`, {
-      competitionId,
-      symbol,
-      quantity,
-    });
-    return {success: true, message: "Order placed successfully."};
-  } catch (error) {
-    logger.error("Error placing order:", error);
-    // Re-throw HttpsError or wrap other errors.
-    if (error instanceof HttpsError) {
-      throw error;
-    } else {
-      throw new HttpsError("internal", "An internal error occurred.");
-    }
-  }
+/**
+ * An HTTP-triggered function to calculate leaderboards.
+ * As per the dev plan, this should ideally be triggered by the completion of
+ * updateMarketData, but for now, it's an HTTP endpoint.
+ */
+export const calculateLeaderboards = onRequest(async (req, res) => {
+  logger.log("HTTP function 'calculateLeaderboards' was triggered.");
+  // TODO: Implement leaderboard calculation logic
+  // - Iterate through all active competitions.
+  // - For each participant in a competition:
+  //   - Calculate their total portfolio value (cash_balance + value of all holdings).
+  //   - Update the 'total_portfolio_value' and 'rank' fields in their participant document.
+  res.status(200).send("Leaderboard calculation triggered successfully.");
 });
