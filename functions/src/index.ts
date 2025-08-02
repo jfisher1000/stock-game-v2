@@ -1,5 +1,5 @@
-import { onCall, onRequest } from "firebase-functions/v2/https";
-import { onSchedule } from "firebase-functions/v2/pubsub";
+import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
+import { onSchedule, ScheduledEvent } from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 
@@ -13,7 +13,7 @@ admin.initializeApp();
 export const placeOrder = onCall((request) => {
   // Ensure the user is authenticated before proceeding.
   if (!request.auth) {
-    throw new onCall.HttpsError(
+    throw new HttpsError(
       "unauthenticated",
       "The function must be called while authenticated.",
     );
@@ -50,8 +50,8 @@ export const placeOrder = onCall((request) => {
  * A scheduled function that runs every minute to update market data for assets
  * that are actively being held in competitions.
  */
-export const updateMarketData = onSchedule("every 1 minutes", async (event) => {
-  logger.log("Scheduled function 'updateMarketData' is running.");
+export const updateMarketData = onSchedule("every 1 minutes", async (event: ScheduledEvent) => {
+  logger.log("Scheduled function 'updateMarketData' is running.", { timestamp: event.timestamp });
   // TODO: Implement market data fetching logic
   // - Get a unique list of all symbols currently held across all active competitions.
   // - Fetch the latest prices for these symbols from a financial data API.
