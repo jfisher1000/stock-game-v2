@@ -9,6 +9,7 @@ import AuthLayout from './components/layout/AuthLayout';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage'; // Import the new page
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 function App() {
@@ -27,13 +28,13 @@ function App() {
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} /> {/* Add the new route */}
       </Route>
 
       {/* Protected Routes */}
       <Route element={<AppLayout />}>
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<DashboardPage />} />
-          {/* Add other protected routes here */}
         </Route>
       </Route>
     </Routes>
