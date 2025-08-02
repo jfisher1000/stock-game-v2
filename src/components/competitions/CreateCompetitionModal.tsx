@@ -1,6 +1,5 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-// NOTE: We will need to install and use shadcn/ui Dialog, Input, Label components
-// For now, this is a placeholder structure.
 
 interface CreateCompetitionModalProps {
   isOpen: boolean;
@@ -11,6 +10,8 @@ const CreateCompetitionModal = ({
   isOpen,
   onClose,
 }: CreateCompetitionModalProps) => {
+  const [competitionName, setCompetitionName] = useState("");
+
   if (!isOpen) {
     return null;
   }
@@ -18,7 +19,7 @@ const CreateCompetitionModal = ({
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // Logic to save to Firestore will go here
-    console.log("Form submitted!");
+    console.log("Creating competition:", competitionName);
     onClose(); // Close modal after submission
   };
 
@@ -38,6 +39,8 @@ const CreateCompetitionModal = ({
                 name="competitionName"
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 required
+                value={competitionName}
+                onChange={(e) => setCompetitionName(e.target.value)}
               />
             </div>
             {/* We will add more fields like dates and starting cash here later */}
