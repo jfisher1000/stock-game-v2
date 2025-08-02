@@ -19,7 +19,7 @@ const DashboardPage = () => {
         <h2 className="text-xl font-semibold">No Competitions Yet</h2>
         <p className="text-gray-500 mt-2">
           Create a new competition to get started!
-        p>
+        </p>
       </div>
 
       {/* The modal for creating a new competition */}
