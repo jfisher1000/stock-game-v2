@@ -34,7 +34,9 @@ export const updateMarketData = functions
   })
   .pubsub.schedule("every 15 minutes")
   .onRun(async () => {
-    functions.logger.info("Starting market data update.", {structuredData: true});
+    functions.logger.info("Starting market data update.", {
+      structuredData: true,
+    });
 
     const batch = db.batch();
 
