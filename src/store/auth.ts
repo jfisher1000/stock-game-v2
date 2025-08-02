@@ -4,6 +4,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
+  sendPasswordResetEmail, // Import the reset function
   User,
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
@@ -15,6 +16,7 @@ interface AuthState {
   signUp: (email: string, password: string) => Promise<void>;
   logIn: (email: string, password: string) => Promise<void>;
   logOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>; // Add reset password function
   setUser: (user: User | null) => void;
 }
 
@@ -27,11 +29,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // Create a user document in Firestore
       await setDoc(doc(db, "users", userCredential.user.uid), {
         email: userCredential.user.email,
         createdAt: new Date(),
-        // Add any other default user properties here
       });
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
@@ -54,6 +54,18 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ user: null });
     } catch (error: any) {
       set({ error: error.message });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  // Add the new resetPassword function
+  resetPassword: async (email: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+      throw error;
     } finally {
       set({ isLoading: false });
     }
