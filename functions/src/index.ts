@@ -129,3 +129,40 @@ export const updateMarketData = functions
       functions.logger.error("Error committing batch to Firestore.", error);
     }
   });
+
+/**
+ * A callable Cloud Function to set a custom user claim (e.g., admin role).
+ * This function can only be called by an already authenticated admin user.
+ */
+export const setUserRole = functions.https.onCall(async (data, context) => {
+  // 1. Security Check: Ensure the user calling the function is an admin.
+  if (context.auth?.token.admin !== true) {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "Must be an admin to set user roles.",
+    );
+  }
+
+  // 2. Input Validation: Check for required data.
+  const email = data.email;
+  if (typeof email !== "string" || email.length === 0) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "The function must be called with a valid 'email' argument.",
+    );
+  }
+
+  try {
+    // 3. Get the user record and set the custom claim.
+    const user = await admin.auth().getUserByEmail(email);
+    await admin.auth().setCustomUserClaims(user.uid, {admin: true});
+
+    // 4. Return a success message.
+    return {
+      message: `Success! ${email} has been made an admin.`,
+    };
+  } catch (error) {
+    functions.logger.error("Error setting user role:", error);
+    throw new functions.https.HttpsError("internal", "Error setting user role.");
+  }
+});
