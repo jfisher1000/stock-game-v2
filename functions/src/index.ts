@@ -1,171 +1,170 @@
-import * as functions from "firebase-functions";
-import * as admin from "firebase-admin";
-import axios from "axios";
+import {initializeApp} from "firebase-admin/app";
+import {getFirestore} from "firebase-admin/firestore";
+import {onCall, HttpsError} from "firebase-functions/v2/https";
+import * as logger from "firebase-functions/logger";
 
 // Initialize the Firebase Admin SDK
-admin.initializeApp();
-const db = admin.firestore();
-
-// --- Configuration ---
-// IMPORTANT: Set your Alpha Vantage API key in your Firebase environment
-// Run this command in your terminal:
-// firebase functions:config:set alphavantage.key="YOUR_API_KEY"
-const ALPHA_VANTAGE_API_KEY = functions.config().alphavantage.key;
-const ALPHA_VANTAGE_BASE_URL = "https://www.alphavantage.co/query";
-
-// Define the assets you want to track
-const STOCKS_TO_TRACK = ["AAPL", "GOOGL", "MSFT", "TSLA"];
-const CRYPTO_TO_TRACK = [
-  {symbol: "BTC", name: "Bitcoin"},
-  {symbol: "ETH", name: "Ethereum"},
-];
+initializeApp();
+const db = getFirestore();
 
 /**
- * A scheduled Cloud Function that runs every 15 minutes to fetch the latest
- * market data for predefined stocks and cryptocurrencies and saves it
- * to the 'market_data' collection in Firestore.
+ * Interface for the data expected from the client when calling this function.
  */
-export const updateMarketData = functions
-  .runWith({
-    // Allocate more memory to handle API calls and data processing
-    memory: "512MB",
-    // Set a timeout of 60 seconds for the function
-    timeoutSeconds: 60,
-  })
-  .pubsub.schedule("every 15 minutes")
-  .onRun(async () => {
-    functions.logger.info("Starting market data update.", {
-      structuredData: true,
-    });
-
-    const batch = db.batch();
-
-    // 1. Fetch and process stock data
-    for (const symbol of STOCKS_TO_TRACK) {
-      try {
-        const response = await axios.get(ALPHA_VANTAGE_BASE_URL, {
-          params: {
-            function: "GLOBAL_QUOTE",
-            symbol: symbol,
-            apikey: ALPHA_VANTAGE_API_KEY,
-          },
-        });
-
-        const quote = response.data["Global Quote"];
-        if (quote && quote["05. price"]) {
-          const price = parseFloat(quote["05. price"]);
-          const changeStr = quote["10. change percent"].replace("%", "");
-          const changePercent = parseFloat(changeStr);
-
-          const docRef = db.collection("market_data").doc(symbol);
-          batch.set(docRef, {
-            symbol: symbol,
-            price: price,
-            changePercent: changePercent,
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-            type: "stock",
-          });
-          functions.logger.info(`Fetched data for stock: ${symbol}`);
-        } else {
-          functions.logger.warn(
-            `No data or invalid format for stock: ${symbol}`,
-            response.data,
-          );
-        }
-      } catch (error) {
-        functions.logger.error(
-          `Error fetching data for stock: ${symbol}`,
-          error,
-        );
-      }
-    }
-
-    // 2. Fetch and process crypto data
-    for (const crypto of CRYPTO_TO_TRACK) {
-      try {
-        const response = await axios.get(ALPHA_VANTAGE_BASE_URL, {
-          params: {
-            function: "CURRENCY_EXCHANGE_RATE",
-            from_currency: crypto.symbol,
-            to_currency: "USD",
-            apikey: ALPHA_VANTAGE_API_KEY,
-          },
-        });
-
-        const rateInfo = response.data["Realtime Currency Exchange Rate"];
-        if (rateInfo && rateInfo["5. Exchange Rate"]) {
-          const price = parseFloat(rateInfo["5. Exchange Rate"]);
-
-          const docRef = db.collection("market_data").doc(crypto.symbol);
-          batch.set(docRef, {
-            symbol: crypto.symbol,
-            name: crypto.name,
-            price: price,
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-            type: "crypto",
-          });
-          functions.logger.info(`Fetched data for crypto: ${crypto.symbol}`);
-        } else {
-          functions.logger.warn(
-            `No data or invalid format for crypto: ${crypto.symbol}`,
-            response.data,
-          );
-        }
-      } catch (error) {
-        functions.logger.error(
-          `Error fetching data for crypto: ${crypto.symbol}`,
-          error,
-        );
-      }
-    }
-
-    // 3. Commit all updates to Firestore in a single batch
-    try {
-      await batch.commit();
-      functions.logger.info(
-        "Successfully committed all market data updates to Firestore.",
-      );
-    } catch (error) {
-      functions.logger.error("Error committing batch to Firestore.", error);
-    }
-  });
+interface PlaceOrderData {
+  competitionId: string;
+  symbol: string;
+  quantity: number; // Positive for buy, negative for sell
+  assetType: "stock" | "crypto"; // To check market hours
+}
 
 /**
- * A callable Cloud Function to set a custom user claim (e.g., admin role).
- * This function can only be called by an already authenticated admin user.
+ * A callable function to place a stock or crypto trade within a competition.
+ * This function is the authoritative source for all trading logic.
  */
-export const setUserRole = functions.https.onCall(async (data, context) => {
-  // 1. Security Check: Ensure the user calling the function is an admin.
-  if (context.auth?.token.admin !== true) {
-    throw new functions.https.HttpsError(
-      "permission-denied",
-      "Must be an admin to set user roles.",
+export const placeOrder = onCall<PlaceOrderData>(async (request) => {
+  // 1. === AUTHENTICATION & VALIDATION ===
+  // Ensure the user is authenticated.
+  if (!request.auth) {
+    logger.error("User is not authenticated.", {structuredData: true});
+    throw new HttpsError(
+        "unauthenticated",
+        "You must be logged in to place an order.",
     );
   }
 
-  // 2. Input Validation: Check for required data.
-  const email = data.email;
-  if (typeof email !== "string" || email.length === 0) {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "The function must be called with a valid 'email' argument.",
+  const {competitionId, symbol, quantity, assetType} = request.data;
+  const userId = request.auth.uid;
+
+  // Basic data validation.
+  if (!competitionId || !symbol || !quantity || !assetType) {
+    throw new HttpsError(
+        "invalid-argument",
+        "Missing required fields for placing an order.",
     );
+  }
+
+  // 2. === MARKET HOURS VALIDATION ===
+  // As per the PRD, stocks can only be traded during market hours.
+  if (assetType === "stock") {
+    const now = new Date();
+    // Note: This uses server time (UTC). You may need to adjust for your
+    // target market's time zone (e.g., ET for NYSE).
+    const hours = now.getUTCHours();
+    const day = now.getUTCDay(); // Sunday = 0, Saturday = 6
+
+    // Example for ET (UTC-4 during DST): 9:30 AM ET is 13:30 UTC. 4 PM ET is 20:00 UTC.
+    const isMarketOpen =
+      day >= 1 && day <= 5 && hours >= 13.5 && hours < 20;
+    if (!isMarketOpen) {
+      throw new HttpsError(
+          "failed-precondition",
+          "The stock market is currently closed.",
+      );
+    }
   }
 
   try {
-    // 3. Get the user record and set the custom claim.
-    const user = await admin.auth().getUserByEmail(email);
-    await admin.auth().setCustomUserClaims(user.uid, {admin: true});
+    // 3. === FIRESTORE TRANSACTION ===
+    // Use a transaction to ensure the trade is atomic.
+    await db.runTransaction(async (transaction) => {
+      // Define document references within the transaction.
+      const participantRef = db
+          .collection("competitions")
+          .doc(competitionId)
+          .collection("participants")
+          .doc(userId);
+      const holdingRef = participantRef.collection("holdings").doc(symbol);
+      const marketDataRef = db.collection("market_data").doc(symbol);
 
-    // 4. Return a success message.
-    return {
-      message: `Success! ${email} has been made an admin.`,
-    };
+      // Fetch the required documents.
+      const [participantDoc, holdingDoc, marketDataDoc] =
+        await transaction.getAll(
+            participantRef,
+            holdingRef,
+            marketDataRef,
+        );
+
+      if (!participantDoc.exists) {
+        throw new HttpsError("not-found", "Participant not found.");
+      }
+      if (!marketDataDoc.exists) {
+        throw new HttpsError("not-found", `Market data for ${symbol} not found.`);
+      }
+
+      const cashBalance = participantDoc.data()?.cash_balance ?? 0;
+      const currentPrice = marketDataDoc.data()?.price ?? 0;
+      const totalCost = currentPrice * quantity;
+
+      // --- BUY LOGIC ---
+      if (quantity > 0) {
+        if (cashBalance < totalCost) {
+          throw new HttpsError(
+              "failed-precondition",
+              "Insufficient funds.",
+          );
+        }
+        // Debit cash.
+        transaction.update(participantRef, {
+          cash_balance: cashBalance - totalCost,
+        });
+
+        // Update holdings.
+        if (holdingDoc.exists) {
+          const existingQty = holdingDoc.data()?.quantity ?? 0;
+          transaction.update(holdingRef, {quantity: existingQty + quantity});
+        } else {
+          transaction.set(holdingRef, {quantity: quantity});
+        }
+      }
+      // --- SELL LOGIC ---
+      else { // quantity < 0
+        const sharesToSell = Math.abs(quantity);
+        const existingQty = holdingDoc.data()?.quantity ?? 0;
+
+        if (!holdingDoc.exists || existingQty < sharesToSell) {
+          throw new HttpsError(
+              "failed-precondition",
+              "Insufficient shares to sell.",
+          );
+        }
+        // Credit cash.
+        transaction.update(participantRef, {
+          cash_balance: cashBalance - totalCost, // totalCost is negative
+        });
+
+        // Update holdings.
+        if (existingQty === sharesToSell) {
+          transaction.delete(holdingRef); // Delete if selling all shares
+        } else {
+          transaction.update(holdingRef, {quantity: existingQty - sharesToSell});
+        }
+      }
+
+      // 4. === LOG THE TRANSACTION ===
+      const transactionLogRef = participantRef.collection("transactions").doc();
+      transaction.set(transactionLogRef, {
+        symbol,
+        quantity,
+        price: currentPrice,
+        total: totalCost,
+        timestamp: new Date(),
+        type: quantity > 0 ? "buy" : "sell",
+      });
+    });
+
+    logger.info(`Trade successfully placed for ${userId}`, {
+      competitionId,
+      symbol,
+      quantity,
+    });
+    return {success: true, message: "Order placed successfully."};
   } catch (error) {
-    functions.logger.error("Error setting user role:", error);
-    throw new functions.https.HttpsError(
-      "internal",
-      "Error setting user role.",
-    );
+    logger.error("Error placing order:", error);
+    // Re-throw HttpsError or wrap other errors.
+    if (error instanceof HttpsError) {
+      throw error;
+    } else {
+      throw new HttpsError("internal", "An internal error occurred.");
+    }
   }
 });
