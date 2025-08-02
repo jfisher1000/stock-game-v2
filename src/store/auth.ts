@@ -4,7 +4,6 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged,
   User,
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
@@ -60,8 +59,3 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 }));
-
-// Listen for auth state changes
-onAuthStateChanged(auth, (user) => {
-  useAuthStore.getState().setUser(user);
-});
