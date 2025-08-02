@@ -5,6 +5,7 @@ import { auth } from './config/firebase';
 import { useAuthStore } from './store/auth';
 
 import AppLayout from './components/layout/AppLayout';
+import AuthLayout from './components/layout/AuthLayout';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
@@ -22,9 +23,11 @@ function App() {
 
   return (
     <Routes>
-      {/* Public Routes */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignUpPage />} />
+      {/* Auth Routes with consistent layout */}
+      <Route element={<AuthLayout />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
+      </Route>
 
       {/* Protected Routes */}
       <Route element={<AppLayout />}>
