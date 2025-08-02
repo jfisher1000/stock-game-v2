@@ -46,10 +46,10 @@ const CreateCompetitionModal = ({
             {/* We will add more fields like dates and starting cash here later */}
           </div>
           <div className="mt-6 flex justify-end space-x-4">
-            <Button type="button" variant="ghost" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit">
+            <Button type="submit" disabled={!competitionName.trim()}>
               Create
             </Button>
           </div>
