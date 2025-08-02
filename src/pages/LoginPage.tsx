@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; // Import Link
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,9 +7,18 @@ import { Input } from '@/components/ui/input';
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [sessionExpiredMessage, setSessionExpiredMessage] = useState('');
   const logIn = useAuthStore((state) => state.logIn);
   const { error, isLoading } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Check for the sessionExpired query parameter on page load
+  useEffect(() => {
+    if (searchParams.get('sessionExpired')) {
+      setSessionExpiredMessage('Your session has expired. Please log in again.');
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +33,9 @@ const LoginPage = () => {
   return (
     <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
       <h2 className="text-3xl font-bold text-center mb-8 text-white">Login</h2>
+      {sessionExpiredMessage && (
+        <p className="text-yellow-400 text-sm text-center mb-4">{sessionExpiredMessage}</p>
+      )}
       <form onSubmit={handleSubmit} className="space-y-6">
         <Input
           type="email"
