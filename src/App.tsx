@@ -1,58 +1,43 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuthStore } from './store/auth';
+import { Routes, Route } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './config/firebase';
+import { useAuthStore } from './store/auth';
 
-// Layouts
 import AppLayout from './components/layout/AppLayout';
 import AuthLayout from './components/layout/AuthLayout';
-
-// Pages
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-
-// Components
+import ForgotPasswordPage from './pages/ForgotPasswordPage'; // Import the new page
 import ProtectedRoute from './components/auth/ProtectedRoute';
-import useIdleTimer from './hooks/useIdleTimer';
 
 function App() {
-  const { user, setUser, clearUser } = useAuthStore();
-  // Call the idle timer hook
-  useIdleTimer();
-
+  const { setUser } = useAuthStore();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        setUser({ uid: firebaseUser.uid, email: firebaseUser.email });
-      } else {
-        clearUser();
-      }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
     });
-
     return () => unsubscribe();
-  }, [setUser, clearUser]);
+  }, [setUser]);
 
   return (
-    <Router>
-      <Routes>
-        {/* Auth routes */}
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={user ? <Navigate to="/" /> : <LoginPage />} />
-          <Route path="/signup" element={user ? <Navigate to="/" /> : <SignUpPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        </Route>
+    <Routes>
+      {/* Auth Routes with consistent layout */}
+      <Route element={<AuthLayout />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} /> {/* Add the new route */}
+      </Route>
 
-        {/* App routes */}
-        <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+      {/* Protected Routes */}
+      <Route element={<AppLayout />}>
+        <Route element={<ProtectedRoute />}>
           <Route path="/" element={<DashboardPage />} />
-          {/* Add other protected routes here */}
         </Route>
-      </Routes>
-    </Router>
+      </Route>
+    </Routes>
   );
 }
 
