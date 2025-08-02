@@ -17,17 +17,31 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 // Hooks
 import useIdleTimer from './hooks/useIdleTimer';
 
-// A component to handle routes that require authentication
-const ProtectedRoutes = () => {
+// This component protects routes that require a user to be logged in.
+// It renders the <AppLayout>, which contains an <Outlet> for the child routes.
+const ProtectedRouteWrapper = () => {
   const { user } = useAuthStore();
-  return user ? <AppLayout /> : <Navigate to="/login" replace />;
+  if (!user) {
+    // If no user, redirect to the login page.
+    return <Navigate to="/login" replace />;
+  }
+  // If a user exists, render the main app layout.
+  // The nested routes (like Dashboard) will be rendered in the <Outlet>.
+  return <AppLayout />;
 };
 
-// A component to handle routes that should only be accessible to unauthenticated users
-const PublicRoutes = () => {
-  const { user } = useAuthStore();
-  return user ? <Navigate to="/" replace /> : <AuthLayout />;
-};
+// This component handles routes that are only for logged-out users.
+// It renders the <AuthLayout>, which contains an <Outlet> for the child routes.
+const PublicRouteWrapper = () => {
+    const { user } = useAuthStore();
+    if (user) {
+        // If a user is logged in, redirect them to the main dashboard.
+        return <Navigate to="/" replace />;
+    }
+    // If no user, render the layout for the authentication pages.
+    // The nested routes (like Login) will be rendered in the <Outlet>.
+    return <AuthLayout />;
+}
 
 function App() {
   const { setUser, clearUser } = useAuthStore();
@@ -59,18 +73,21 @@ function App() {
 
   return (
     <Routes>
-      {/* Protected Routes: Accessible only to logged-in users */}
-      <Route path="/*" element={<ProtectedRoutes />}>
-        <Route index element={<DashboardPage />} />
-        {/* Add other protected routes here, e.g., <Route path="profile" element={<ProfilePage />} /> */}
-      </Route>
-
-      {/* Public Routes: Accessible only to logged-out users */}
-      <Route element={<PublicRoutes />}>
+      {/* Routes for logged-out users (e.g., login, signup) */}
+      <Route element={<PublicRouteWrapper />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       </Route>
+
+      {/* Routes for logged-in users (e.g., dashboard) */}
+      <Route element={<ProtectedRouteWrapper />}>
+        <Route path="/" element={<DashboardPage />} />
+        {/* Add other protected routes here */}
+      </Route>
+
+      {/* A fallback route to handle any undefined paths and redirect appropriately */}
+      <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
 }
