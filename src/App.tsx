@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './config/firebase';
@@ -51,32 +51,27 @@ function App() {
   // Display a loading indicator while Firebase checks auth status
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div>Loading...</div>
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="text-foreground">Loading...</div>
       </div>
     );
   }
 
   return (
-    <Router>
-      <Routes>
-        {/* Protected Routes: Accessible only to logged-in users */}
-        <Route element={<ProtectedRoutes />}>
-          <Route path="/" element={<DashboardPage />} />
-          {/* Add other protected routes here */}
-        </Route>
+    <Routes>
+      {/* Protected Routes: Accessible only to logged-in users */}
+      <Route path="/*" element={<ProtectedRoutes />}>
+        <Route index element={<DashboardPage />} />
+        {/* Add other protected routes here, e.g., <Route path="profile" element={<ProfilePage />} /> */}
+      </Route>
 
-        {/* Public Routes: Accessible only to logged-out users */}
-        <Route element={<PublicRoutes />}>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignUpPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        </Route>
-
-        {/* Fallback for any other path, redirecting to a safe page */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+      {/* Public Routes: Accessible only to logged-out users */}
+      <Route element={<PublicRoutes />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      </Route>
+    </Routes>
   );
 }
 
