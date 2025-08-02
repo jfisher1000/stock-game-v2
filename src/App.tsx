@@ -1,11 +1,19 @@
+import { Routes, Route } from 'react-router-dom';
+import AppLayout from './components/layout/AppLayout';
+import DashboardPage from './pages/DashboardPage';
+import LoginPage from './pages/LoginPage';
+import SignUpPage from './pages/SignUpPage';
+
 function App() {
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <h1 className="text-4xl font-bold text-white">
-        Welcome to VStock Trader!
-      </h1>
-    </div>
-  )
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
+      </Route>
+    </Routes>
+  );
 }
 
-export default App
+export default App;
