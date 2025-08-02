@@ -16,8 +16,8 @@ const ALPHA_VANTAGE_BASE_URL = "https://www.alphavantage.co/query";
 // Define the assets you want to track
 const STOCKS_TO_TRACK = ["AAPL", "GOOGL", "MSFT", "TSLA"];
 const CRYPTO_TO_TRACK = [
-  { symbol: "BTC", name: "Bitcoin" },
-  { symbol: "ETH", name: "Ethereum" },
+  {symbol: "BTC", name: "Bitcoin"},
+  {symbol: "ETH", name: "Ethereum"},
 ];
 
 /**
@@ -33,8 +33,8 @@ export const updateMarketData = functions
     timeoutSeconds: 60,
   })
   .pubsub.schedule("every 15 minutes")
-  .onRun(async (context) => {
-    functions.logger.info("Starting market data update.", { structuredData: true });
+  .onRun(async () => {
+    functions.logger.info("Starting market data update.", {structuredData: true});
 
     const batch = db.batch();
 
@@ -52,7 +52,8 @@ export const updateMarketData = functions
         const quote = response.data["Global Quote"];
         if (quote && quote["05. price"]) {
           const price = parseFloat(quote["05. price"]);
-          const changePercent = parseFloat(quote["10. change percent"].replace("%", ""));
+          const changeStr = quote["10. change percent"].replace("%", "");
+          const changePercent = parseFloat(changeStr);
 
           const docRef = db.collection("market_data").doc(symbol);
           batch.set(docRef, {
@@ -62,12 +63,18 @@ export const updateMarketData = functions
             lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
             type: "stock",
           });
-          functions.logger.info(`Successfully fetched data for stock: ${symbol}`);
+          functions.logger.info(`Fetched data for stock: ${symbol}`);
         } else {
-          functions.logger.warn(`No data or invalid format for stock: ${symbol}`, response.data);
+          functions.logger.warn(
+            `No data or invalid format for stock: ${symbol}`,
+            response.data,
+          );
         }
       } catch (error) {
-        functions.logger.error(`Error fetching data for stock: ${symbol}`, error);
+        functions.logger.error(
+          `Error fetching data for stock: ${symbol}`,
+          error,
+        );
       }
     }
 
@@ -95,21 +102,28 @@ export const updateMarketData = functions
             lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
             type: "crypto",
           });
-          functions.logger.info(`Successfully fetched data for crypto: ${crypto.symbol}`);
+          functions.logger.info(`Fetched data for crypto: ${crypto.symbol}`);
         } else {
-          functions.logger.warn(`No data or invalid format for crypto: ${crypto.symbol}`, response.data);
+          functions.logger.warn(
+            `No data or invalid format for crypto: ${crypto.symbol}`,
+            response.data,
+          );
         }
       } catch (error) {
-        functions.logger.error(`Error fetching data for crypto: ${crypto.symbol}`, error);
+        functions.logger.error(
+          `Error fetching data for crypto: ${crypto.symbol}`,
+          error,
+        );
       }
     }
 
     // 3. Commit all updates to Firestore in a single batch
     try {
       await batch.commit();
-      functions.logger.info("Successfully committed all market data updates to Firestore.");
+      functions.logger.info(
+        "Successfully committed all market data updates to Firestore.",
+      );
     } catch (error) {
       functions.logger.error("Error committing batch to Firestore.", error);
     }
   });
-
