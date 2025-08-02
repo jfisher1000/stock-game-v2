@@ -15,3 +15,6 @@
 # Firebase
 .firebaserc
 firebase.json
+
+# Firebase Emulator runtime config
+functions/.runtimeconfig.json
