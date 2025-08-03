@@ -1,37 +1,24 @@
 # Dependencies
 /node_modules
 
-# Vite build output
+# Build folder
 /dist
 
 # Environment variables
 .env
 .env.*
+.env.local
+.env.*.local
 
 # IDE and OS files
 .DS_Store
-
+.vscode/
 
 # Firebase
 .firebaserc
 firebase.json
-
-# Firebase Emulator runtime config
 functions/.runtimeconfig.json
-
-# Dependencies
-/node_modules
 
 # Minia Template Assets
 /src/assets/images
 /src/assets/scss
-
-# Build folder
-/dist
-
-# Environment variables
-.env.local
-.env.*.local
-
-# IDE config
-.vscode/
