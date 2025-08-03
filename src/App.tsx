@@ -12,7 +12,6 @@ import { auth } from "./config/firebase";
 // Layout Components
 import AppLayout from "./components/layout/AppLayout";
 import AuthLayout from "./components/layout/AuthLayout";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ErrorBoundary from "./components/layout/ErrorBoundary";
 
 // Page Components
@@ -32,11 +31,11 @@ import DashboardPage from "./pages/DashboardPage";
  * changes in the Firebase authentication state.
  *
  * 2.  Loading State Handling: It explicitly handles the initial authentication
- * loading state. While Firebase is checking the user's status, it displays a
- * loading indicator to prevent rendering the app in an intermediate or invalid
- * state. This prevents race conditions with the router.
+ * loading state to prevent race conditions with the router.
  *
- * 3.  Routing Configuration: It defines the application's routes using `react-router-dom`.
+ * 3.  Conditional Routing: It renders different sets of routes based on the
+ * user's authentication status. This is a robust pattern that avoids the
+ * complexity of nested protected route components.
  *
  * 4.  Error Handling: The entire application is wrapped in an `ErrorBoundary`
  * component to catch and handle any runtime errors.
@@ -55,11 +54,11 @@ function App() {
   }, [setUser, setLoading]);
 
   // Display a loading indicator while the auth state is being determined.
-  // This is crucial to prevent race conditions.
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+        {/* You could replace this with a more sophisticated spinner component */}
+        <p className="text-white">Loading application...</p>
       </div>
     );
   }
@@ -68,39 +67,36 @@ function App() {
     <ErrorBoundary>
       <Router>
         <Routes>
-          {/* Authentication Routes */}
-          {/* These routes use the AuthLayout to center the forms on the page. */}
-          <Route element={<AuthLayout />}>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignUpPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          </Route>
-
-          {/* Protected Application Routes */}
-          {/* These routes are protected and use the main AppLayout. */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
+          {user ? (
+            // Routes for authenticated users
+            <Route
+              path="/"
+              element={
                 <AppLayout>
-                  <DashboardPage />
+                  <Routes>
+                    <Route path="/dashboard" element={<DashboardPage />} />
+                    {/* Add other protected routes here, e.g., /profile, /settings */}
+                    <Route
+                      path="*"
+                      element={<Navigate to="/dashboard" replace />}
+                    />
+                  </Routes>
                 </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Redirect Logic */}
-          {/* Redirect root path to dashboard if logged in, otherwise to login. */}
-          <Route
-            path="/"
-            element={
-              user ? (
-                <Navigate to="/dashboard" replace />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
+              }
+            />
+          ) : (
+            // Routes for unauthenticated users
+            <Route path="/" element={<AuthLayout />}>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignUpPage />} />
+              <Route
+                path="/forgot-password"
+                element={<ForgotPasswordPage />}
+              />
+              {/* Any other path redirects to login */}
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Route>
+          )}
         </Routes>
       </Router>
     </ErrorBoundary>
