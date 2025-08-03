@@ -11,13 +11,12 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// This is a more robust way to initialize Firebase.
-// It checks if an app has already been initialized to prevent errors during
-// hot-reloading in a development environment.
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// A robust way to initialize Firebase that prevents errors on hot-reloads.
+function initializeServices() {
+  const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  return { app, auth, db };
+}
 
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-// Export the initialized services
-export { app, auth, db };
+export const { app, auth, db } = initializeServices();
