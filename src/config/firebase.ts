@@ -1,9 +1,9 @@
 // src/config/firebase.ts
 
 import { initializeApp } from "firebase/app";
-import { getAuth, connectAuthEmulator } from "firebase/auth";
-import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
-import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getFunctions } from "firebase/functions";
 
 // Your web app's Firebase configuration from your Firebase project
 const firebaseConfig = {
@@ -18,22 +18,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase services
-const auth = getAuth(app);
-const db = getFirestore(app);
-const functions = getFunctions(app);
+// Initialize and export Firebase services
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const functions = getFunctions(app);
 
-// This is the crucial part for local development
-if (window.location.hostname === "localhost") {
-  console.log("✅ Development mode: Connecting to local Firebase emulators.");
-
-  // Point to the emulators
-  connectAuthEmulator(auth, "http://127.0.0.1:9099");
-  connectFirestoreEmulator(db, '127.0.0.1', 8081);
-  connectFunctionsEmulator(functions, "127.0.0.1", 5001);
-} else {
-  console.log("Production mode: Connecting to live Firebase services.");
-}
-
-
-export { app, auth, db, functions };
+console.log("Connecting to LIVE Firebase services.");
