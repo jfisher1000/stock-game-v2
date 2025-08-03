@@ -1,10 +1,12 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
-  // This content array is the crucial part. It tells Tailwind to scan
-  // all .html and .tsx files inside the src directory for class names.
+  // This is the definitive fix. This content array tells Tailwind to scan
+  // the root index.html file AND every relevant file inside the src folder.
+  // This ensures all your components are scanned for Tailwind classes.
   content: [
-    './src/**/*.{ts,tsx,html,js,jsx}',
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
   prefix: "",
   theme: {
