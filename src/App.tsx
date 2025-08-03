@@ -1,51 +1,56 @@
 import { useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './config/firebase';
 import { useAuthStore } from './store/auth';
+
 import AppLayout from './components/layout/AppLayout';
 import AuthLayout from './components/layout/AuthLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+
+// Correctly import pages using default import syntax
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import { DashboardPage } from './pages/DashboardPage'; 
+import DashboardPage from './pages/DashboardPage';
 
 function App() {
-  // Get the state-updating functions from our Zustand store.
-  const { setUser, setLoading } = useAuthStore();
+  const { setUser, setIsLoading } = useAuthStore();
+  const navigate = useNavigate();
 
-  // useEffect with an empty dependency array [] runs only once when the app mounts.
-  // This is the perfect place to set up the authentication listener.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      // When Firebase determines the auth state, update our global store.
       setUser(user);
-      setLoading(false); // We are no longer loading.
+      setIsLoading(false);
+      if (user) {
+        // Optional: redirect to dashboard after login
+        // navigate('/dashboard');
+      }
     });
 
-    // The cleanup function will run when the component unmounts,
-    // preventing memory leaks.
+    // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, [setUser, setLoading]); // Add dependencies to satisfy the ESLint rule.
+  }, [setUser, setIsLoading, navigate]);
 
   return (
     <Routes>
-      <Route element={<AppLayout />}>
-        <Route 
-          path="/" 
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          } 
-        />
+      {/* Routes for authenticated users */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AppLayout />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          {/* Add other protected routes here, e.g., /competition/:id */}
+        </Route>
       </Route>
+
+      {/* Routes for unauthenticated users */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       </Route>
+
+      {/* Fallback route - maybe redirect to login or dashboard */}
+      <Route path="*" element={<LoginPage />} />
     </Routes>
   );
 }
