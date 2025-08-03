@@ -1,22 +1,31 @@
-import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
+import { Navigate } from 'react-router-dom';
+import { ReactNode } from 'react';
 
-const ProtectedRoute = () => {
+interface ProtectedRouteProps {
+  children: ReactNode;
+}
+
+function ProtectedRoute({ children }: ProtectedRouteProps) {
+  // Use the hook from your Zustand store
   const { user, isLoading } = useAuthStore();
 
   if (isLoading) {
-    // You can replace this with a loading spinner component
-    return <div>Loading...</div>;
+    // You can replace this with a dedicated loading spinner component
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-xl font-semibold">Loading...</div>
+      </div>
+    );
   }
 
   if (!user) {
-    // If the user is not logged in, redirect them to the login page
+    // Redirect them to the /login page, but save the current location they were
+    // trying to go to. This allows us to send them back after they log in.
     return <Navigate to="/login" replace />;
   }
 
-  // If the user is logged in, render the child components
-  return <Outlet />;
-};
+  return children;
+}
 
 export default ProtectedRoute;
