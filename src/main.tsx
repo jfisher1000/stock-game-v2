@@ -1,12 +1,16 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom';
 import App from './App.tsx'
 import './index.css'
 
-// The <BrowserRouter> has been removed from this file.
-// The App component will now manage the router internally.
+// This file is the single entry point for the router.
+// By wrapping <App /> here, we ensure the entire application
+// has access to routing context.
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
   </React.StrictMode>,
 )
