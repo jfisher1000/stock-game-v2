@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
@@ -11,9 +11,13 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase and export the app instance
-export const app = initializeApp(firebaseConfig);
+// This is a more robust way to initialize Firebase.
+// It checks if an app has already been initialized to prevent errors during
+// hot-reloading in a development environment.
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Export other Firebase services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Export the initialized services
+export { app, auth, db };
