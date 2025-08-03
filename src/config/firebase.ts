@@ -1,11 +1,7 @@
-// src/config/firebase.ts
-
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getFunctions } from "firebase/functions";
 
-// Your web app's Firebase configuration from your Firebase project
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -15,12 +11,9 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase and export the app instance
+export const app = initializeApp(firebaseConfig);
 
-// Initialize and export Firebase services
+// Export other Firebase services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const functions = getFunctions(app);
-
-console.log("Connecting to LIVE Firebase services.");
