@@ -2,12 +2,9 @@
 module.exports = {
   darkMode: ["class"],
   // This content array is the crucial part. It tells Tailwind to scan
-  // all .html and .tsx files in the src directory for class names.
+  // all .html and .tsx files inside the src directory for class names.
   content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx,html}',
+    './src/**/*.{ts,tsx,html,js,jsx}',
   ],
   prefix: "",
   theme: {
