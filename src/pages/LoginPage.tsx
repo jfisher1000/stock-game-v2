@@ -1,68 +1,94 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { useAuthStore } from '@/store/auth';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/config/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [sessionExpiredMessage, setSessionExpiredMessage] = useState('');
-  const logIn = useAuthStore((state) => state.logIn);
-  const { error, isLoading } = useAuthStore();
+  const [error, setError] = useState<string | null>(null);
+  // Local loading state specifically for the login action
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
-  // Check for the sessionExpired query parameter on page load
-  useEffect(() => {
-    if (searchParams.get('sessionExpired')) {
-      setSessionExpiredMessage('Your session has expired. Please log in again.');
-    }
-  }, [searchParams]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setIsLoggingIn(true); // Set loading to true when the process starts
+
     try {
-      await logIn(email, password);
-      navigate('/');
-    } catch (err) {
-      console.error("Failed to log in:", err);
+      await signInWithEmailAndPassword(auth, email, password);
+      // On successful login, the global onAuthStateChanged listener in App.tsx
+      // will detect the new user session and handle routing logic.
+      // We can also navigate directly for a faster user experience.
+      navigate('/dashboard');
+    } catch (err: any) {
+      console.error("Login failed:", err.code);
+      // Provide user-friendly error messages based on the error code
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError('Invalid email or password. Please try again.');
+      } else {
+        setError('An unexpected error occurred. Please try again later.');
+      }
+    } finally {
+      // CRITICAL: Always reset the loading state, whether login succeeds or fails.
+      setIsLoggingIn(false);
     }
   };
 
   return (
-    <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
-      <h2 className="text-3xl font-bold text-center mb-8 text-white">Login</h2>
-      {sessionExpiredMessage && (
-        <p className="text-yellow-400 text-sm text-center mb-4">{sessionExpiredMessage}</p>
-      )}
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <Input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="bg-gray-700 border-gray-600 text-white"
-          required
-        />
-        <Input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="bg-gray-700 border-gray-600 text-white"
-          required
-        />
-        <div className="text-right">
-          <Link to="/forgot-password" className="text-sm text-indigo-400 hover:underline">
-            Forgot Password?
-          </Link>
+    <div className="w-full max-w-md p-8 space-y-6 bg-card text-card-foreground rounded-lg shadow-md">
+      <div className="text-center">
+        <h1 className="text-3xl font-bold">Welcome Back</h1>
+        <p className="text-muted-foreground">Log in to continue your trading journey</p>
+      </div>
+      <form onSubmit={handleLogin} className="space-y-6">
+        <div className="space-y-2">
+          <label htmlFor="email" className="text-sm font-medium">Email</label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={isLoggingIn}
+          />
         </div>
-        <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={isLoading}>
-          {isLoading ? 'Logging in...' : 'Login'}
+        <div className="space-y-2">
+          <label htmlFor="password">Password</label>
+          <Input
+            id="password"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={isLoggingIn}
+          />
+        </div>
+        
+        {error && <p className="text-sm text-destructive text-center">{error}</p>}
+
+        <Button type="submit" className="w-full" disabled={isLoggingIn}>
+          {isLoggingIn ? 'Logging in...' : 'Login'}
         </Button>
-        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
       </form>
+      <div className="text-center text-sm text-muted-foreground">
+        <p>
+          Don't have an account?{' '}
+          <Link to="/signup" className="font-medium text-primary hover:underline">
+            Sign up
+          </Link>
+        </p>
+        <p className="mt-2">
+          <Link to="/forgot-password" className="font-medium text-primary hover:underline">
+            Forgot password?
+          </Link>
+        </p>
+      </div>
     </div>
   );
 };
