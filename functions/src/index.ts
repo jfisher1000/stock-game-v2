@@ -1,81 +1,89 @@
-import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
-import { onSchedule, ScheduledEvent } from "firebase-functions/v2/scheduler";
-import * as admin from "firebase-admin";
+import { HttpsError, onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
+import * as admin from "firebase-admin";
 
-// Initialize Firebase Admin SDK
+// Initialize the Firebase Admin SDK, which allows for server-side access
 admin.initializeApp();
+const db = admin.firestore();
 
-/**
- * A callable function to place a trade order for a user in a competition.
- * This function is the core of the trading engine and must be secure and transactional.
- */
-export const placeOrder = onCall((request) => {
-  // Ensure the user is authenticated before proceeding.
+// Define the structure for the data we expect from the client
+interface CreateCompetitionData {
+  name: string;
+}
+
+// This is a "Callable Function", meaning the client can invoke it directly.
+export const createCompetition = onCall(async (request) => {
+  // 1. Authentication Check: Ensure the user is logged in.
   if (!request.auth) {
     throw new HttpsError(
       "unauthenticated",
-      "The function must be called while authenticated.",
+      "You must be logged in to create a competition."
     );
   }
 
-  // Log the raw request data for debugging.
-  logger.info("Received placeOrder request:", { data: request.data, auth: request.auth });
+  const uid = request.auth.uid;
+  const { name } = request.data as CreateCompetitionData;
+  const startingCash = 100000; // Default starting cash as per PRD
 
-  // TODO: Implement the full trading logic as per the PRD
-  // - Validate competition status (active, not expired)
-  // - Validate market hours for the given asset type (e.g., stocks vs. crypto)
-  // - Perform a Firestore transaction to ensure atomic operations:
-  //   1. Read the asset's current price from /market_data/{symbol}.
-  //   2. Read the user's participant data to get their cash_balance.
-  //   3. Verify the user has sufficient funds (for a buy) or shares (for a sell).
-  //   4. Debit/credit the user's cash_balance.
-  //   5. Update, create, or delete the asset document in the user's /holdings subcollection.
-  //   6. Create a new document in the /transactions subcollection to log the trade.
+  // 2. Validation: Check the data sent from the client.
+  if (!name || typeof name !== "string" || name.trim().length === 0 || name.length > 50) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Competition name must be a string between 1 and 50 characters."
+    );
+  }
 
-  const { symbol, quantity, orderType } = request.data;
-  const userId = request.auth.uid;
+  logger.info(`User ${uid} is creating competition "${name}" with starting cash ${startingCash}`);
 
-  // Placeholder response for now.
-  return {
-    success: true,
-    message: `Order placed for ${quantity} of ${symbol} for user ${userId}.`,
-    details: {
-      orderType,
-    },
-  };
-});
+  try {
+    // 3. Create Competition and Participant in a Batch Write
+    // A batch write is an "all-or-nothing" operation. It ensures that we either
+    // create BOTH the competition and the participant document, or NEITHER.
+    // This prevents data inconsistencies.
+    const batch = db.batch();
 
-/**
- * A scheduled function that runs every minute to update market data for assets
- * that are actively being held in competitions.
- */
-export const updateMarketData = onSchedule("every 1 minutes", async (event: ScheduledEvent) => {
-  // The 'scheduleTime' property contains the timestamp for the event.
-  logger.log("Scheduled function 'updateMarketData' is running.", { scheduleTime: event.scheduleTime });
-  
-  // TODO: Implement market data fetching logic
-  // - Get a unique list of all symbols currently held across all active competitions.
-  // - Fetch the latest prices for these symbols from a financial data API.
-  // - Update the /market_data/{symbol} documents in Firestore with the new prices.
+    // Create a reference for the new competition document
+    const competitionRef = db.collection("competitions").doc();
 
-  // Scheduled functions should return a Promise that resolves to void.
-  // Simply not having a return statement at the end of an async function does this.
-  return;
-});
+    // Define the data for the new competition
+    batch.set(competitionRef, {
+      name: name,
+      creatorId: uid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      startingCash: startingCash,
+      participantCount: 1,
+    });
 
+    // Create a reference for the creator's participant document
+    const participantRef = competitionRef.collection("participants").doc(uid);
 
-/**
- * An HTTP-triggered function to calculate leaderboards.
- * As per the dev plan, this should ideally be triggered by the completion of
- * updateMarketData, but for now, it's an HTTP endpoint.
- */
-export const calculateLeaderboards = onRequest(async (req, res) => {
-  logger.log("HTTP function 'calculateLeaderboards' was triggered.");
-  // TODO: Implement leaderboard calculation logic
-  // - Iterate through all active competitions.
-  // - For each participant in a competition:
-  //   - Calculate their total portfolio value (cash_balance + value of all holdings).
-  //   - Update the 'total_portfolio_value' and 'rank' fields in their participant document.
-  res.status(200).send("Leaderboard calculation triggered successfully.");
+    // Define the data for the creator as the first participant
+    batch.set(participantRef, {
+      cash_balance: startingCash,
+      total_portfolio_value: startingCash, // Initially, value is just cash
+      joinedAt: admin.firestore.FieldValue.serverTimestamp(),
+      // We don't need to store holdings or transactions yet
+    });
+
+    // 4. Commit the Batch
+    // Atomically write both documents to the database.
+    await batch.commit();
+
+    logger.info(`Successfully created competition ${competitionRef.id}`);
+
+    // 5. Return a Success Response
+    // Send the new competition's ID back to the client.
+    return {
+      status: "success",
+      message: "Competition created successfully!",
+      competitionId: competitionRef.id,
+    };
+  } catch (error) {
+    logger.error("Error creating competition:", error);
+    // Throw a generic error to the client to avoid exposing server implementation details.
+    throw new HttpsError(
+      "internal",
+      "An unexpected error occurred while creating the competition."
+    );
+  }
 });
