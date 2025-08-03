@@ -1,9 +1,11 @@
+// src/config/firebase.ts
+
 import { initializeApp } from "firebase/app";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 
-// Your web app's Firebase configuration from .env files
+// Your web app's Firebase configuration from your Firebase project
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -16,23 +18,22 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase Services
+// Initialize Firebase services
 const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
 
-if (import.meta.env.DEV) {
+// This is the crucial part for local development
+if (window.location.hostname === "localhost") {
   console.log("✅ Development mode: Connecting to local Firebase emulators.");
 
-  // Point to the Auth emulator
-  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
-
-  // Point to the Firestore emulator on the new port
-  connectFirestoreEmulator(db, "127.0.0.1", 8081);
-
-  // Point to the Functions emulator
+  // Point to the emulators
+  connectAuthEmulator(auth, "http://127.0.0.1:9099");
+  connectFirestoreEmulator(db, '127.0.0.1', 8081);
   connectFunctionsEmulator(functions, "127.0.0.1", 5001);
+} else {
+  console.log("Production mode: Connecting to live Firebase services.");
 }
 
-// Export the services for use throughout your app
+
 export { app, auth, db, functions };
