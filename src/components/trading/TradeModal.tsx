@@ -1,181 +1,86 @@
-import React, { useState } from "react";
-import { httpsCallable } from "firebase/functions";
-import { functions } from "@/config/firebase";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2 } from "lucide-react";
-import { toast } from "sonner"; // Import the toast function
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+// Assume you have a function to place a trade order
+// import { placeTradeOrder } from '@/api/trading'; 
 
-// --- Type Definitions ---
-
-// Defines the props the TradeModal component will accept.
 interface TradeModalProps {
-  competitionId: string;
-  symbol: string;
-  assetType: "stock" | "crypto";
-  currentPrice: number;
-  userCash: number; // To display available cash
-  userShares: number; // To display available shares
-  // A trigger button can be passed in, or it will use a default one.
-  children?: React.ReactNode;
+  isOpen: boolean;
+  onClose: () => void;
+  stockSymbol: string;
 }
 
-// Defines the data structure sent to the placeOrder cloud function.
-interface PlaceOrderData {
-  competitionId: string;
-  symbol: string;
-  quantity: number; // Positive for buy, negative for sell
-  assetType: "stock" | "crypto";
-}
+const TradeModal: React.FC<TradeModalProps> = ({ isOpen, onClose, stockSymbol }) => {
+  const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
+  const [quantity, setQuantity] = useState('');
 
-// Defines the expected success response from the cloud function.
-interface PlaceOrderResult {
-  success: boolean;
-  message: string;
-}
-
-// --- Component ---
-
-/**
- * A modal component for buying and selling assets within a competition.
- */
-export function TradeModal({
-  competitionId,
-  symbol,
-  assetType,
-  currentPrice,
-  userCash,
-  userShares,
-  children,
-}: TradeModalProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [quantity, setQuantity] = useState("");
-  const [activeTab, setActiveTab] = useState("buy"); // 'buy' or 'sell'
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // Creates a callable reference to our Firebase Cloud Function.
-  const placeOrder = httpsCallable<PlaceOrderData, PlaceOrderResult>(
-    functions,
-    "placeOrder"
-  );
+  if (!isOpen) return null;
 
   const handleTrade = async () => {
-    setIsLoading(true);
-    
-    const numQuantity = parseInt(quantity, 10);
-
-    // Validate the quantity input.
-    if (isNaN(numQuantity) || numQuantity <= 0) {
-      toast.error("Please enter a valid, positive quantity.");
-      setIsLoading(false);
+    // Basic validation
+    if (!quantity || isNaN(parseInt(quantity)) || parseInt(quantity) <= 0) {
+      alert('Please enter a valid quantity.');
       return;
     }
-
-    // Determine the final quantity based on the active tab (buy/sell).
-    const tradeQuantity = activeTab === "buy" ? numQuantity : -numQuantity;
-
+    
     try {
-      // Call the cloud function with the trade details.
-      const result = await placeOrder({
-        competitionId,
-        symbol,
-        quantity: tradeQuantity,
-        assetType,
-      });
-
-      // On success, show a success toast, close the modal, and reset state.
-      if (result.data.success) {
-        toast.success(result.data.message || "Order placed successfully!");
-        setIsOpen(false);
-        setQuantity("");
-      }
-    } catch (err: any) {
-      // On failure, display the error message from the function in a toast.
-      console.error("Error placing order:", err);
-      toast.error(err.message || "An unknown error occurred.");
-    } finally {
-      setIsLoading(false);
+      // Here you would call your actual trade execution function
+      // await placeTradeOrder({
+      //   symbol: stockSymbol,
+      //   quantity: parseInt(quantity),
+      //   type: tradeType,
+      // });
+      console.log(`Executing ${tradeType} order for ${quantity} of ${stockSymbol}`);
+      alert('Trade placed successfully!'); // Replace with better notification
+      onClose();
+    } catch (error) {
+      console.error('Failed to place trade:', error);
+      alert('Failed to place trade. See console for details.'); // Replace with better notification
     }
   };
 
-  // Calculate the estimated cost/proceeds of the trade.
-  const estimatedTotal = (parseInt(quantity, 10) || 0) * currentPrice;
-
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        {children ? children : <Button>Trade</Button>}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>
-            Trade {symbol.toUpperCase()}
-          </DialogTitle>
-          <DialogDescription>
-            Current Price: ${currentPrice.toFixed(2)}
-          </DialogDescription>
-        </DialogHeader>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+      <div className="bg-card p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h2 className="text-2xl font-bold mb-4">Trade {stockSymbol}</h2>
+        
+        <div className="mb-4">
+          <div className="flex border border-input rounded-md">
+            <button 
+              onClick={() => setTradeType('buy')}
+              className={`flex-1 p-2 rounded-l-md ${tradeType === 'buy' ? 'bg-primary text-primary-foreground' : 'bg-transparent'}`}
+            >
+              Buy
+            </button>
+            <button 
+              onClick={() => setTradeType('sell')}
+              className={`flex-1 p-2 rounded-r-md ${tradeType === 'sell' ? 'bg-destructive text-destructive-foreground' : 'bg-transparent'}`}
+            >
+              Sell
+            </button>
+          </div>
+        </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="buy">Buy</TabsTrigger>
-            <TabsTrigger value="sell">Sell</TabsTrigger>
-          </TabsList>
-          <TabsContent value="buy">
-            <div className="text-sm text-center text-muted-foreground pt-2">
-              Available Cash: ${userCash.toFixed(2)}
-            </div>
-          </TabsContent>
-          <TabsContent value="sell">
-            <div className="text-sm text-center text-muted-foreground pt-2">
-              Shares Owned: {userShares}
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        <div className="grid gap-2 py-4">
-          <label htmlFor="quantity" className="text-sm font-medium">
-            Quantity
-          </label>
-          <Input
+        <div className="mb-6">
+          <label htmlFor="quantity" className="block text-sm font-medium text-muted-foreground mb-2">Quantity</label>
+          <Input 
             id="quantity"
             type="number"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
             placeholder="e.g., 10"
-            min="1"
           />
-          <div className="text-sm text-center text-muted-foreground">
-            Estimated {activeTab === "buy" ? "Cost" : "Proceeds"}: $
-            {estimatedTotal.toFixed(2)}
-          </div>
         </div>
 
-        <DialogFooter>
-          <Button
-            onClick={handleTrade}
-            disabled={isLoading || !quantity}
-            className="w-full"
-          >
-            {isLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
-            {isLoading
-              ? "Placing Order..."
-              : `Confirm ${activeTab === "buy" ? "Buy" : "Sell"}`}
+        <div className="flex justify-end space-x-4">
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleTrade} className={tradeType === 'buy' ? 'bg-primary' : 'bg-destructive'}>
+            Confirm {tradeType.charAt(0).toUpperCase() + tradeType.slice(1)}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+    </div>
   );
-}
+};
+
+export default TradeModal;
