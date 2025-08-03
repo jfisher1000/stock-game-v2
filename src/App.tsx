@@ -9,9 +9,8 @@ import { DashboardPage } from './pages/DashboardPage';
 
 function App() {
   return (
-    // The <BrowserRouter> has been removed from this file.
-    // This component now only defines the routes, and the router
-    // context is provided by main.tsx.
+    // The <BrowserRouter> has been removed. This component now only
+    // defines the routes and expects to be rendered inside a router.
     <Routes>
       <Route element={<AppLayout />}>
         <Route 
