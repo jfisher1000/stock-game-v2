@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout';
 import AuthLayout from './components/layout/AuthLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -9,26 +9,26 @@ import { DashboardPage } from './pages/DashboardPage';
 
 function App() {
   return (
-    // This BrowserRouter is now the single, top-level router for the app.
-    <BrowserRouter>
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route 
-            path="/" 
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            } 
-          />
-        </Route>
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignUpPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    // The <BrowserRouter> has been removed from this file.
+    // This component now only defines the routes, and the router
+    // context is provided by main.tsx.
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route 
+          path="/" 
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          } 
+        />
+      </Route>
+      <Route element={<AuthLayout />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      </Route>
+    </Routes>
   );
 }
 
