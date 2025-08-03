@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppLayout from './components/layout/AppLayout';
 import AuthLayout from './components/layout/AuthLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -9,7 +9,8 @@ import { DashboardPage } from './pages/DashboardPage';
 
 function App() {
   return (
-    <Router>
+    // This BrowserRouter is now the single, top-level router for the app.
+    <BrowserRouter>
       <Routes>
         <Route element={<AppLayout />}>
           <Route 
@@ -27,7 +28,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         </Route>
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
 
