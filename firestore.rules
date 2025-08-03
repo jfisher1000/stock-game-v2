@@ -1,9 +1,56 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // By default, deny all reads and writes
-    match /{document=**} {
-      allow read, write: if false;
+
+    // Users can read and write to their own user profile document.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Market data is read-only for all authenticated clients.
+    // It should only be written by a backend process.
+    match /market_data/{symbol} {
+      allow read: if request.auth != null;
+      allow write: if false; // Prevent client-side writes
+    }
+
+    // Competitions can be read by any authenticated user.
+    // Creation will be handled by a Cloud Function, but for now we allow
+    // any authenticated user to create a competition document.
+    match /competitions/{competitionId} {
+      allow read, create: if request.auth != null;
+      // Only allow updates/deletes from the backend in the future.
+      // For now, allow creator to update/delete.
+      // Note: This is a temporary rule for development.
+      allow update, delete: if request.auth != null && resource.data.creatorId == request.auth.uid;
+    }
+
+    // --- FINANCIAL DATA LOCKDOWN ---
+    // The following rules are critical for security. They prevent clients
+    // from directly modifying financial records. All modifications MUST
+    // go through a server-side Cloud Function.
+
+    // Participants' summary data (cash, portfolio value) can be read by
+    // any authenticated user for leaderboards, but can only be written to
+    // by the backend.
+    match /competitions/{competitionId}/participants/{userId} {
+      allow read: if request.auth != null;
+      allow write: if false; // DENY client-side writes
+    }
+
+    // Holdings are a user's assets. They can be read by the owner, but
+    // can only be modified by the backend `placeOrder` function.
+    match /competitions/{competitionId}/participants/{userId}/holdings/{symbol} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false; // DENY client-side writes
+    }
+
+    // Transactions are immutable records. They can be read by the owner,
+    // but can only be created by the backend.
+    match /competitions/{competitionId}/participants/{userId}/transactions/{transactionId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false; // DENY client-side writes
     }
   }
 }
