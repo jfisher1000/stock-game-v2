@@ -29,25 +29,20 @@ import DashboardPage from "./pages/DashboardPage";
  *
  * Key Responsibilities:
  * 1.  Authentication State Management: It uses a `useEffect` hook to listen for
- * changes in the Firebase authentication state. When the state changes, it
- * updates the Zustand store (`useAuthStore`) accordingly. This ensures the
- * application's state is always in sync with the user's authentication status.
+ * changes in the Firebase authentication state.
  *
- * 2.  Routing Configuration: It defines the application's routes using `react-router-dom`.
- * - It uses a nested routing structure to apply different layouts to different
- * parts of the application.
- * - `AuthLayout`: Wraps all authentication-related pages (login, sign-up).
- * Routes nested within it will be centered on the page.
- * - `AppLayout`: Wraps the main application pages that are shown to logged-in users.
- * This layout includes the main navigation and other persistent UI elements.
- * - `ProtectedRoute`: This component wraps routes that should only be accessible
- * to authenticated users, redirecting them to the login page if they are not signed in.
+ * 2.  Loading State Handling: It explicitly handles the initial authentication
+ * loading state. While Firebase is checking the user's status, it displays a
+ * loading indicator to prevent rendering the app in an intermediate or invalid
+ * state. This prevents race conditions with the router.
  *
- * 3.  Error Handling: The entire application is wrapped in an `ErrorBoundary`
- * component to catch and handle any runtime errors, preventing the app from crashing.
+ * 3.  Routing Configuration: It defines the application's routes using `react-router-dom`.
+ *
+ * 4.  Error Handling: The entire application is wrapped in an `ErrorBoundary`
+ * component to catch and handle any runtime errors.
  */
 function App() {
-  const { setUser, setLoading, user } = useAuthStore();
+  const { setUser, setLoading, user, loading } = useAuthStore();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -58,6 +53,16 @@ function App() {
     // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [setUser, setLoading]);
+
+  // Display a loading indicator while the auth state is being determined.
+  // This is crucial to prevent race conditions.
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary>
