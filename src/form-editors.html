@@ -1,0 +1,49 @@
+{{> partials/main }}
+
+    <head>
+        {{> partials/title-meta title="Form Editor" }}
+
+        {{> partials/head-css }}
+    </head>
+
+    {{> partials/body }}
+
+        {{> partials/menu }}
+
+        <div class="main-content group-data-[sidebar-size=sm]:ml-[70px]">
+            <div class="min-h-screen page-content dark:bg-zinc-700">
+
+                <div class="container-fluid px-[0.625rem]">
+
+                    {{> partials/page-title title="Form Editor" pagetitle="Forms" }}
+
+                    <div class="grid grid-cols-1">
+                        <div class="card dark:bg-zinc-800 dark:border-zinc-600">
+                            <div class="card-body border-b border-gray-100 dark:border-zinc-600">
+                                <h6 class="mb-1 text-gray-700 text-15 dark:text-gray-100">Ckeditor Classic editor</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="ckeditor-classic"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{> partials/footer }}
+                </div>
+            </div>
+        </div>
+
+        {{> partials/customizer }}
+
+        {{> partials/vendor-scripts }}
+
+        <!-- ckeditor -->
+        <script src="assets/libs/@ckeditor/ckeditor5-build-classic/build/ckeditor.js"></script>
+
+        <!-- init js -->
+        <script  src="assets/js/pages/form-editor.init.js"></script>
+
+        <script  src="assets/js/app.js"></script>
+    </body>
+
+</html>

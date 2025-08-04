@@ -1,0 +1,32 @@
+{{> partials/main }}
+
+    <head>
+        {{> partials/title-meta title="Starter Page" }}
+
+        {{> partials/head-css }}
+    </head>
+
+    {{> partials/body }}
+
+        {{> partials/menu }}
+
+        <div class="main-content group-data-[sidebar-size=sm]:ml-[70px]">
+            <div class="min-h-screen page-content dark:bg-zinc-700">
+
+                <div class="container-fluid px-[0.625rem]">
+
+                    {{> partials/page-title title="Starter Page" pagetitle="Pages" }}
+
+                    {{> partials/footer }}
+                </div>
+            </div>
+        </div>
+
+        {{> partials/customizer }}
+
+        {{> partials/vendor-scripts }}
+
+        <script  src="assets/js/app.js"></script>
+    </body>
+
+</html>
