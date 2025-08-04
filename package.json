@@ -9,7 +9,6 @@
     "@fullcalendar/daygrid": "^5.10.1",
     "@fullcalendar/interaction": "^5.10.1",
     "@fullcalendar/react": "^5.10.1",
-    "@lourenci/react-kanban": "^2.1.0",
     "@tanstack/react-query": "^5.45.1",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
