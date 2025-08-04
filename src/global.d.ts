@@ -1,0 +1,17 @@
+declare module 'react-meta-tags';
+declare module 'react-modal-video';
+declare module 'react-jvectormap';
+declare module 'react-select';
+declare module 'react-draft-wysiwyg';
+declare module 'echarts';
+declare module 'lodash.clonedeep';
+declare module 'react-select/animated';
+declare module 'react-flatpickr';
+declare module 'react-input-mask';
+declare module 'react-slick';
+declare module 'react-sparklines';
+declare module 'leaflet';
+declare module 'react-leaflet';
+declare module 'react-table';
+declare module 'feather-icons-react';
+declare module 'cleave.js/react';
