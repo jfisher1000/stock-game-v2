@@ -1,26 +1,24 @@
-import { createStore, applyMiddleware, compose } from 'redux';
+// src/store/index.ts
+
+import { createStore, applyMiddleware, compose } from "redux";
 import createSagaMiddleware from "redux-saga";
-import reducers from './reducers';
+import rootReducer from "./reducers";
 import rootSaga from "./sagas";
-import { composeWithDevTools } from 'redux-devtools-extension';
 
 const sagaMiddleware = createSagaMiddleware();
 const middlewares = [sagaMiddleware];
 
-const composeEnhancers = composeWithDevTools({
-    // Specify name here, actionsBlacklist, actionsCreators and other options if needed
-  });
-  
-export function configureStore(initialState: any) {
+// This line checks if the Redux DevTools Extension is installed.
+// If it is, it uses the extension's compose function.
+// If not, it falls back to the default `compose` from redux.
+const composeEnhancers = (window as any).__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ || compose;
 
-    const store = createStore(
-        reducers,
-        initialState,
-        composeEnhancers(
-            applyMiddleware(...middlewares)
-        ),
-    );
-    sagaMiddleware.run(rootSaga);
-    return store;
-}
+const store = createStore(
+  rootReducer,
+  // This now safely applies the middleware with or without the devtools.
+  composeEnhancers(applyMiddleware(...middlewares))
+);
 
+sagaMiddleware.run(rootSaga);
+
+export { store };
